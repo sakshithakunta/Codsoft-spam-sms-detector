@@ -1,0 +1,63 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.feature_extraction.text import TfidfVectorizer
+import joblib
+import tkinter as tk
+from tkinter import simpledialog, messagebox
+
+# Load the dataset
+dataframe = pd.read_csv('spam.csv', encoding='latin1')
+dataframe.columns = ['label', 'text', 'Unnamed_2', 'Unnamed_3', 'Unnamed_4']
+dataframe = dataframe[['label', 'text']].dropna()
+dataframe['label'] = dataframe['label'].map({'ham': 0, 'spam': 1})
+
+# Split the dataset
+X = dataframe['text']
+y = dataframe['label']
+test_size_value = 0.2
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size_value, random_state=42)
+
+# Text vectorization
+vectorizer = TfidfVectorizer(stop_words='english')
+X_train_transformed = vectorizer.fit_transform(X_train)
+X_test_transformed = vectorizer.transform(X_test)
+
+# Train the classifier
+classifier = LogisticRegression()
+classifier.fit(X_train_transformed, y_train)
+
+# Save the model and vectorizer
+joblib.dump(classifier, 'spam_classifier_model.pkl')
+joblib.dump(vectorizer, 'text_vectorizer.pkl')
+
+def predict_message(text):
+    vectorized_text = vectorizer.transform([text])
+    prediction = classifier.predict(vectorized_text)
+    return prediction[0]
+
+# Set up the GUI
+root_window = tk.Tk()
+root_window.withdraw()
+
+user_input = simpledialog.askstring("Input", "Type a message to check if it's spam:")
+
+if user_input:
+    prediction_result = predict_message(user_input)
+
+    result_frame = tk.Tk()
+    result_frame.title("Prediction Outcome")
+
+    if prediction_result == 1:
+        result_frame.configure(bg='red')
+        output_label = tk.Label(result_frame, text="This message is classified as spam", bg='red', fg='white')
+    else:
+        result_frame.configure(bg='green')
+        output_label = tk.Label(result_frame, text="This message is classified as not spam", bg='green', fg='white')
+
+    output_label.pack(padx=20, pady=20)
+    result_frame.mainloop()
+else:
+    messagebox.showinfo("Result", "You did not enter any message.")
+
+root_window.destroy()
